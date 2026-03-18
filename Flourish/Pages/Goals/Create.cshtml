@@ -4,6 +4,52 @@
     ViewData["Title"] = "New Goal";
 }
 
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .flatpickr-calendar {
+            background: #1e2130;
+            border: 1px solid #2a2f45;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .flatpickr-calendar.arrowTop:before, .flatpickr-calendar.arrowTop:after { border-bottom-color: #2a2f45; }
+        .flatpickr-months { background: #1e2130; border-radius: 12px 12px 0 0; }
+        .flatpickr-month, .flatpickr-weekdays, span.flatpickr-weekday { background: transparent; color: #9ca3af; }
+        .flatpickr-current-month .flatpickr-monthDropdown-months,
+        .flatpickr-current-month input.cur-year { color: #f3f4f6; font-weight: 600; }
+        .flatpickr-day { color: #d1d5db; border-radius: 8px; }
+        .flatpickr-day:hover { background: #2a2f45; border-color: #2a2f45; color: #f9fafb; }
+        .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #4ade80; border-color: #4ade80; color: #171923; font-weight: 700; }
+        .flatpickr-day.today { border-color: #4ade80; color: #4ade80; }
+        .flatpickr-day.today:hover { background: #4ade80; color: #171923; }
+        .flatpickr-day.flatpickr-disabled { color: #374151; }
+        .flatpickr-day.inRange { background: #16a34a30; border-color: transparent; }
+        .flatpickr-day.startRange, .flatpickr-day.endRange { background: #4ade80; border-color: #4ade80; color: #171923; }
+        .numInputWrapper span { border-color: #2a2f45; }
+        .numInputWrapper span svg path { fill: #6b7280; }
+        .flatpickr-prev-month svg, .flatpickr-next-month svg { fill: #6b7280; }
+        .flatpickr-prev-month:hover svg, .flatpickr-next-month:hover svg { fill: #4ade80; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        const startPicker = flatpickr("#StartDate", {
+            dateFormat: "Y-m-d",
+            allowInput: true,
+            onChange: (dates) => {
+                if (dates[0]) duePicker.set('minDate', dates[0]);
+            }
+        });
+        const duePicker = flatpickr("#DueDate", {
+            dateFormat: "Y-m-d",
+            allowInput: true,
+            onChange: (dates) => {
+                if (dates[0]) startPicker.set('maxDate', dates[0]);
+            }
+        });
+    </script>
+}
+
 <div class="max-w-2xl">
     @if (!Model.PeriodOptions.Any())
     {
@@ -56,13 +102,13 @@
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-muted mb-1.5">Start Date <span class="font-normal">(optional)</span></label>
-                    <input asp-for="Input.StartDate" type="date"
-                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors [color-scheme:dark]" />
+                    <input asp-for="Input.StartDate" id="StartDate" type="text" placeholder="Pick a date"
+                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors" />
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-muted mb-1.5">Due Date <span class="font-normal">(optional)</span></label>
-                    <input asp-for="Input.DueDate" type="date"
-                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors [color-scheme:dark]" />
+                    <input asp-for="Input.DueDate" id="DueDate" type="text" placeholder="Pick a date"
+                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors" />
                 </div>
             </div>
 
