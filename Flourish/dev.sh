@@ -1,16 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# dev.sh — start local dev environment (DB via Docker, app via dotnet run)
 set -e
 
-DOCKER_COMPOSE="/usr/local/Cellar/docker-compose/2.12.2/bin/docker-compose"
-export DOTNET_ROOT="/usr/local/opt/dotnet/libexec"
-export PATH="$DOTNET_ROOT:$PATH"
-export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+# Support Colima on macOS
+if [[ -S "$HOME/.colima/default/docker.sock" ]]; then
+  export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+fi
 
 echo "▶ Starting PostgreSQL..."
-$DOCKER_COMPOSE up -d
+docker compose up -d db
 
 echo "⏳ Waiting for PostgreSQL to be ready..."
-until docker exec flourish-db pg_isready -U postgres -q 2>/dev/null; do
+until docker compose exec -T db pg_isready -U postgres -q 2>/dev/null; do
   sleep 1
 done
 echo "✓ PostgreSQL ready"
