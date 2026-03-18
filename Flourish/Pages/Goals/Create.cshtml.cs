@@ -31,9 +31,18 @@ public class CreateGoalModel(CurrentUserService currentUserService, AppDbContext
 
     public async Task<IActionResult> OnPostAsync()
     {
+        await LoadPeriodsAsync();
+
+        if (Input.ReviewPeriodId == Guid.Empty || PeriodOptions.Count == 0)
+            ModelState.AddModelError("Input.ReviewPeriodId", "Please select a valid review period.");
+
         if (!ModelState.IsValid)
+            return Page();
+
+        var periodExists = await db.ReviewPeriods.AnyAsync(p => p.Id == Input.ReviewPeriodId);
+        if (!periodExists)
         {
-            await LoadPeriodsAsync();
+            ModelState.AddModelError("Input.ReviewPeriodId", "Selected review period does not exist.");
             return Page();
         }
 

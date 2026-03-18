@@ -5,6 +5,16 @@
 }
 
 <div class="max-w-2xl">
+    @if (!Model.PeriodOptions.Any())
+    {
+        <div class="bg-amber-900/30 border border-amber-700 text-amber-300 text-sm rounded-xl px-5 py-4 mb-4">
+            No review periods exist yet. A team lead needs to create one before goals can be added.
+            @if (ViewData["IsTeamLead"] as bool? == true)
+            {
+                <a asp-page="/Periods/Index" class="underline ml-1">Create a period →</a>
+            }
+        </div>
+    }
     <div class="bg-panel border border-border rounded-xl p-6">
         <form method="post" class="space-y-5">
             <div asp-validation-summary="ModelOnly" class="text-red-400 text-sm"></div>

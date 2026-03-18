@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Flourish.Data;
+using Flourish.Models;
 using Flourish.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -23,8 +25,32 @@ builder.Services.AddAuthentication(options =>
     {
         options.ClientId = builder.Configuration["Google:ClientId"]!;
         options.ClientSecret = builder.Configuration["Google:ClientSecret"]!;
+        options.CallbackPath = "/signin-google";
         options.Scope.Add("https://www.googleapis.com/auth/calendar");
         options.SaveTokens = true;
+        options.Events.OnTicketReceived = async ctx =>
+        {
+            var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var principal = ctx.Principal!;
+            var googleId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+            var email    = principal.FindFirstValue(ClaimTypes.Email) ?? "";
+            var name     = principal.FindFirstValue(ClaimTypes.Name) ?? email;
+            var avatar   = principal.FindFirstValue("urn:google:picture")
+                        ?? principal.FindFirstValue("picture");
+
+            var user = db.Users.FirstOrDefault(u => u.GoogleId == googleId);
+            if (user is null)
+            {
+                user = new User { GoogleId = googleId, Email = email, Name = name, AvatarUrl = avatar };
+                db.Users.Add(user);
+            }
+            else
+            {
+                user.Name = name;
+                user.AvatarUrl = avatar;
+            }
+            await db.SaveChangesAsync();
+        };
     });
 
 builder.Services.AddHttpContextAccessor();
