@@ -4,6 +4,7 @@ using Flourish.Models;
 using Flourish.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +29,20 @@ builder.Services.AddAuthentication(options =>
         options.CallbackPath = "/signin-google";
         options.Scope.Add("https://www.googleapis.com/auth/calendar");
         options.SaveTokens = true;
+
+        var publicUrl = builder.Configuration["PublicUrl"]?.TrimEnd('/');
+        if (!string.IsNullOrEmpty(publicUrl))
+        {
+            options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
+            {
+                var redirect = ctx.RedirectUri.Replace(
+                    Uri.EscapeDataString("http://localhost:5005/signin-google"),
+                    Uri.EscapeDataString($"{publicUrl}/signin-google"));
+                ctx.Response.Redirect(redirect);
+                return Task.CompletedTask;
+            };
+        }
+
         options.Events.OnTicketReceived = async ctx =>
         {
             var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
@@ -66,13 +81,20 @@ builder.Services.AddRazorPages(options =>
 
 var app = builder.Build();
 
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost,
+};
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Flourish.Data;
 using Flourish.Models;
 using Flourish.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -79,8 +80,11 @@ public class ReviewsIndexModel(
             ReviewPeriod = period
         };
 
+        // Use the reviewer's saved OAuth token so the event appears on their own calendar
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+
         // Create Google Calendar event
-        var (eventId, meetLink) = await calendarService.CreateReviewEventAsync(reviewEvent, reviewee, user, teamLead);
+        var (eventId, meetLink) = await calendarService.CreateReviewEventAsync(reviewEvent, reviewee, user, teamLead, accessToken);
         reviewEvent.GoogleCalendarEventId = eventId;
         reviewEvent.MeetLink = meetLink;
 

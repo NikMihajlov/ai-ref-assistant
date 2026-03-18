@@ -28,13 +28,27 @@ public class WhiteboardIndexModel(CurrentUserService currentUserService, AppDbCo
 
         if (SelectedPeriodId is null) return Page();
 
+        (Users, Links, SharedGoals) = await FetchDataAsync(viewer, SelectedPeriodId.Value);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnGetDataAsync(Guid periodId)
+    {
+        var viewer = await CurrentUserService.GetRequiredAsync();
+        var (users, links, sharedGoals) = await FetchDataAsync(viewer, periodId);
+        var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        return new JsonResult(new { users, links, sharedGoals }, jsonOptions);
+    }
+
+    private async Task<(List<UserNode>, List<LinkEdge>, List<SharedGoalNode>)> FetchDataAsync(Models.User viewer, Guid periodId)
+    {
         var allUsers = await db.Users.OrderBy(u => u.Name).ToListAsync();
         var allGoals = await db.Goals
-            .Where(g => g.ReviewPeriodId == SelectedPeriodId)
+            .Where(g => g.ReviewPeriodId == periodId)
             .Include(g => g.User)
             .ToListAsync();
 
-        Users = allUsers.Select(u =>
+        var users = allUsers.Select(u =>
         {
             var userGoals = allGoals
                 .Where(g => g.UserId == u.Id && CurrentUserService.CanViewGoal(viewer, g))
@@ -44,13 +58,13 @@ public class WhiteboardIndexModel(CurrentUserService currentUserService, AppDbCo
         }).Where(u => u.Goals.Count > 0).ToList();
 
         var goalIds = allGoals.Select(g => g.Id).ToList();
-        Links = await db.GoalLinks
+        var links = await db.GoalLinks
             .Where(l => goalIds.Contains(l.GoalId1) && goalIds.Contains(l.GoalId2))
             .Select(l => new LinkEdge(l.Id, l.GoalId1, l.GoalId2, l.Note))
             .ToListAsync();
 
-        SharedGoals = await db.SharedGoals
-            .Where(sg => sg.ReviewPeriodId == SelectedPeriodId)
+        var sharedGoals = await db.SharedGoals
+            .Where(sg => sg.ReviewPeriodId == periodId)
             .Include(sg => sg.Members)
             .Select(sg => new SharedGoalNode(
                 sg.Id, sg.Title, sg.Status.ToString(),
@@ -58,7 +72,7 @@ public class WhiteboardIndexModel(CurrentUserService currentUserService, AppDbCo
                 sg.Members.Select(m => m.UserId.ToString()).ToList()))
             .ToListAsync();
 
-        return Page();
+        return (users, links, sharedGoals);
     }
 
     // ── GoalLink handlers ─────────────────────────────────────────────────────

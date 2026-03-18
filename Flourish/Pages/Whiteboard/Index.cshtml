@@ -493,6 +493,90 @@ async function deleteFromPanel(id) {
 function closePanel() { document.getElementById('side-panel').classList.remove('open'); }
 
 document.addEventListener('keydown', e => { if (e.key==='Escape') { closeLink(); closeCommonGoalModal(); closePanel(); }});
+
+// ── Live polling (updates whiteboard for all viewers) ─────────────────────────
+async function pollWhiteboard() {
+    if (!PERIOD_ID || document.hidden) return;
+    try {
+        const res = await fetch(`/Whiteboard?handler=Data&periodId=${PERIOD_ID}`, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        applyDiff(data);
+    } catch (_) { /* silently ignore network errors */ }
+}
+
+function applyDiff({ users, links, sharedGoals }) {
+    // ── Goal nodes ────────────────────────────────────────────────────────────
+    const newGoalMap = new Map();
+    users.forEach(user => {
+        // Ensure user compound node exists
+        if (cy.getElementById(`user-${user.id}`).length === 0) {
+            cy.add({ data: { id: `user-${user.id}`, label: user.name, type: 'user' } });
+        } else {
+            cy.getElementById(`user-${user.id}`).data('label', user.name);
+        }
+        user.goals.forEach(goal => {
+            const cyId = `goal-${goal.id}`;
+            newGoalMap.set(cyId, { goal, userId: user.id, userName: user.name });
+            const c = STATUS_COLORS[goal.status] || STATUS_COLORS.NotStarted;
+            const overdue = goal.dueDate && new Date(goal.dueDate) < new Date() && goal.status !== 'Completed';
+            const existing = cy.getElementById(cyId);
+            if (existing.length === 0) {
+                cy.add({ data: { id: cyId, rawId: goal.id, label: goal.title,
+                    status: goal.status, isPrivate: goal.isPrivate, dueDate: goal.dueDate, overdue,
+                    parent: `user-${user.id}`, type: 'goal', userName: user.name,
+                    bg: c.bg, border: c.border, color: c.text } });
+            } else {
+                existing.data({ label: goal.title, status: goal.status,
+                    isPrivate: goal.isPrivate, dueDate: goal.dueDate, overdue,
+                    bg: c.bg, border: c.border, color: c.text });
+            }
+        });
+    });
+
+    // Remove goals that no longer exist
+    cy.$('node[type="goal"]').forEach(n => { if (!newGoalMap.has(n.id())) cy.remove(n); });
+    // Remove user compound nodes that are now empty
+    const newUserIds = new Set(users.map(u => `user-${u.id}`));
+    cy.$('node[type="user"]').forEach(n => { if (!newUserIds.has(n.id())) cy.remove(n); });
+
+    // ── Links ─────────────────────────────────────────────────────────────────
+    const newLinkMap = new Map(links.map(l => [`link-${l.id}`, l]));
+    cy.$('edge[type="link"]').forEach(e => { if (!newLinkMap.has(e.id())) cy.remove(e); });
+    newLinkMap.forEach((link, cyId) => {
+        const src = `goal-${link.goalId1}`, tgt = `goal-${link.goalId2}`;
+        const existing = cy.getElementById(cyId);
+        if (existing.length === 0) {
+            if (cy.getElementById(src).length && cy.getElementById(tgt).length)
+                cy.add({ data: { id: cyId, rawId: link.id, source: src, target: tgt, note: link.note, type: 'link' } });
+        } else {
+            existing.data('note', link.note);
+        }
+    });
+
+    // ── Shared goals ──────────────────────────────────────────────────────────
+    const newSgMap = new Map(sharedGoals.map(sg => [`sg-${sg.id}`, sg]));
+    cy.$('node[type="shared"]').forEach(n => {
+        if (!newSgMap.has(n.id())) { cy.remove(`[source="${n.id()}"]`); cy.remove(n); }
+    });
+    newSgMap.forEach((sg, cyId) => {
+        const existing = cy.getElementById(cyId);
+        if (existing.length === 0) {
+            const c = SHARED_STYLE;
+            cy.add({ data: { id: cyId, rawId: sg.id, label: sg.title, type: 'shared',
+                status: sg.status, description: sg.description, notes: sg.notes, memberIds: sg.memberIds,
+                bg: c.bg, border: c.border, color: c.text } });
+            sg.memberIds.forEach(uid =>
+                cy.add({ data: { id: `sgm-${sg.id}-${uid}`, source: cyId, target: `user-${uid}`, type: 'shared-link' } }));
+        } else {
+            existing.data({ label: sg.title, status: sg.status,
+                description: sg.description, notes: sg.notes, memberIds: sg.memberIds });
+        }
+    });
+}
+
+setInterval(pollWhiteboard, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollWhiteboard(); });
 </script>
 </body>
 </html>
