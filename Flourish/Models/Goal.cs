@@ -19,6 +19,8 @@ public class Goal
     public string? Description { get; set; }
     public GoalStatus Status { get; set; } = GoalStatus.NotStarted;
     public bool IsPrivate { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? DueDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

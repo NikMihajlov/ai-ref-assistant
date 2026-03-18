@@ -3,6 +3,7 @@ using System;
 using Flourish.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Flourish.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318191749_AddGoalLinks")]
+    partial class AddGoalLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -224,68 +227,6 @@ namespace Flourish.Migrations
                     b.ToTable("ReviewPeriods");
                 });
 
-            modelBuilder.Entity("Flourish.Models.SharedGoal", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ReviewPeriodId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("ReviewPeriodId");
-
-                    b.ToTable("SharedGoals");
-                });
-
-            modelBuilder.Entity("Flourish.Models.SharedGoalMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SharedGoalId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("SharedGoalId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("SharedGoalMembers");
-                });
-
             modelBuilder.Entity("Flourish.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -424,44 +365,6 @@ namespace Flourish.Migrations
                     b.Navigation("Reviewer");
                 });
 
-            modelBuilder.Entity("Flourish.Models.SharedGoal", b =>
-                {
-                    b.HasOne("Flourish.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Flourish.Models.ReviewPeriod", "ReviewPeriod")
-                        .WithMany()
-                        .HasForeignKey("ReviewPeriodId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("ReviewPeriod");
-                });
-
-            modelBuilder.Entity("Flourish.Models.SharedGoalMember", b =>
-                {
-                    b.HasOne("Flourish.Models.SharedGoal", "SharedGoal")
-                        .WithMany("Members")
-                        .HasForeignKey("SharedGoalId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Flourish.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SharedGoal");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Flourish.Models.User", b =>
                 {
                     b.HasOne("Flourish.Models.User", "Manager")
@@ -482,11 +385,6 @@ namespace Flourish.Migrations
                     b.Navigation("Goals");
 
                     b.Navigation("ReviewEvents");
-                });
-
-            modelBuilder.Entity("Flourish.Models.SharedGoal", b =>
-                {
-                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Flourish.Models.User", b =>

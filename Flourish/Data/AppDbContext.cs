@@ -11,6 +11,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Actionable> Actionables => Set<Actionable>();
     public DbSet<ReviewEvent> ReviewEvents => Set<ReviewEvent>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<GoalLink> GoalLinks => Set<GoalLink>();
+    public DbSet<SharedGoal> SharedGoals => Set<SharedGoal>();
+    public DbSet<SharedGoalMember> SharedGoalMembers => Set<SharedGoalMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +37,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany(rp => rp.Goals)
                 .HasForeignKey(g => g.ReviewPeriodId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SharedGoal>(e =>
+        {
+            e.HasOne(sg => sg.ReviewPeriod).WithMany().HasForeignKey(sg => sg.ReviewPeriodId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(sg => sg.CreatedBy).WithMany().HasForeignKey(sg => sg.CreatedById).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SharedGoalMember>(e =>
+        {
+            e.HasOne(m => m.SharedGoal).WithMany(sg => sg.Members).HasForeignKey(m => m.SharedGoalId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(m => new { m.SharedGoalId, m.UserId }).IsUnique();
+        });
+
+        modelBuilder.Entity<GoalLink>(e =>
+        {
+            e.HasOne(gl => gl.Goal1).WithMany().HasForeignKey(gl => gl.GoalId1).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(gl => gl.Goal2).WithMany().HasForeignKey(gl => gl.GoalId2).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(gl => gl.CreatedBy).WithMany().HasForeignKey(gl => gl.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(gl => new { gl.GoalId1, gl.GoalId2 }).IsUnique();
         });
 
         modelBuilder.Entity<ReviewEvent>(e =>

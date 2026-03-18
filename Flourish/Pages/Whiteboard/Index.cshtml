@@ -1,0 +1,498 @@
+@page
+@model Flourish.Pages.Whiteboard.WhiteboardIndexModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Whiteboard";
+    Layout = null;
+    var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    var usersJson       = JsonSerializer.Serialize(Model.Users, jsonOptions);
+    var linksJson       = JsonSerializer.Serialize(Model.Links, jsonOptions);
+    var sharedGoalsJson = JsonSerializer.Serialize(Model.SharedGoals, jsonOptions);
+    var periodsJson     = JsonSerializer.Serialize(Model.Periods.Select(p => new { p.Id, p.Name }), jsonOptions);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whiteboard — Flourish</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Kumbh Sans','sans-serif'] }, colors: { surface:'#171923',panel:'#1e2130',border:'#2a2f45',accent:'#4ade80','accent-dim':'#16a34a',muted:'#6b7280' } } }
+        }
+    </script>
+    <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin:0; overflow:hidden; background:#171923; font-family:'Kumbh Sans',sans-serif; color:#e5e7eb; }
+        #cy { position:absolute; inset:48px 0 0 0; }
+        .tooltip { position:fixed; background:#1e2130; border:1px solid #2a2f45; color:#e5e7eb; font-size:11px; padding:5px 9px; border-radius:7px; pointer-events:none; z-index:50; white-space:nowrap; }
+        .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:flex; align-items:center; justify-content:center; }
+        .modal { background:#1e2130; border:1px solid #2a2f45; border-radius:14px; padding:24px; width:420px; max-height:90vh; overflow-y:auto; }
+        .modal h3 { margin:0 0 16px; font-size:14px; font-weight:600; color:#f3f4f6; }
+        .field label { display:block; font-size:11px; font-weight:500; color:#6b7280; margin-bottom:5px; text-transform:uppercase; letter-spacing:.05em; }
+        .field { margin-bottom:14px; }
+        .inp { width:100%; background:#171923; border:1px solid #2a2f45; border-radius:8px; padding:8px 12px; font-size:13px; color:#f3f4f6; font-family:inherit; outline:none; transition:border-color .15s; }
+        .inp:focus { border-color:#4ade80; }
+        textarea.inp { resize:vertical; min-height:70px; }
+        .btn { cursor:pointer; border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-family:inherit; font-weight:600; transition:all .15s; }
+        .btn-primary { background:#4ade80; color:#171923; }
+        .btn-primary:hover { background:#22c55e; }
+        .btn-ghost { background:transparent; border:1px solid #2a2f45; color:#9ca3af; }
+        .btn-ghost:hover { color:#f3f4f6; border-color:#4b5563; }
+        .btn-danger { background:transparent; border:1px solid #7f1d1d; color:#f87171; }
+        .btn-danger:hover { background:#7f1d1d30; }
+        .side-panel { position:fixed; right:0; top:48px; bottom:0; width:320px; background:#1e2130; border-left:1px solid #2a2f45; z-index:40; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .2s; }
+        .side-panel.open { transform:translateX(0); }
+        .side-panel-header { padding:16px; border-bottom:1px solid #2a2f45; display:flex; align-items:center; justify-content:space-between; }
+        .side-panel-body { flex:1; overflow-y:auto; padding:16px; }
+        .status-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:500; }
+        .member-chip { display:inline-flex; align-items:center; gap:5px; background:#171923; border:1px solid #2a2f45; border-radius:20px; padding:3px 10px; font-size:11px; color:#d1d5db; }
+    </style>
+</head>
+<body>
+
+@* ── Top bar ──────────────────────────────────────────────────────────────── *@
+<div style="position:fixed;top:0;left:0;right:0;height:48px;background:#1e2130cc;backdrop-filter:blur(8px);border-bottom:1px solid #2a2f45;display:flex;align-items:center;padding:0 16px;gap:12px;z-index:30;">
+    <a href="/" style="color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;">Flourish</a>
+    <span style="color:#2a2f45;">|</span>
+    <span style="color:#d1d5db;font-size:13px;font-weight:500;">Whiteboard</span>
+
+    @* Period switcher *@
+    <div style="display:flex;gap:6px;margin-left:8px;">
+        @foreach (var period in Model.Periods)
+        {
+            <a asp-page="/Whiteboard/Index" asp-route-periodId="@period.Id"
+               style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;text-decoration:none;transition:all .15s;@(Model.SelectedPeriodId == period.Id ? "background:#4ade80;color:#171923;" : "border:1px solid #2a2f45;color:#6b7280;")">
+                @period.Name
+            </a>
+        }
+    </div>
+
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+        <button id="btn-common-goal" class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="openCommonGoalModal()">
+            + Common Goal
+        </button>
+        <span id="mode-label" style="font-size:12px;color:#4ade80;font-weight:500;">Pan mode</span>
+        <span style="color:#2a2f45;font-size:12px;">|</span>
+        <span style="font-size:11px;color:#6b7280;"><kbd style="background:#171923;border:1px solid #2a2f45;border-radius:4px;padding:1px 5px;color:#d1d5db;">Shift</kbd>+click two goals to link</span>
+        <button onclick="cy.fit()" style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit;">⟲ Reset</button>
+    </div>
+</div>
+
+@* ── Canvas ───────────────────────────────────────────────────────────────── *@
+<div id="cy"></div>
+
+@* ── Tooltip ─────────────────────────────────────────────────────────────── *@
+<div id="tooltip" class="tooltip" style="display:none;"></div>
+
+@* ── Side Panel (goal link / shared goal details) ─────────────────────────── *@
+<div id="side-panel" class="side-panel">
+    <div class="side-panel-header">
+        <span id="sp-title" style="font-size:13px;font-weight:600;color:#f3f4f6;"></span>
+        <button onclick="closePanel()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div class="side-panel-body" id="sp-body"></div>
+</div>
+
+@* ── Common Goal Modal ────────────────────────────────────────────────────── *@
+<div id="modal-common" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3 id="modal-common-title">New Common Goal</h3>
+        <div class="field">
+            <label>Title</label>
+            <input id="cg-title" class="inp" placeholder="e.g. Improve deployment pipeline" />
+        </div>
+        <div class="field">
+            <label>Description</label>
+            <textarea id="cg-desc" class="inp" placeholder="What are we trying to achieve together?"></textarea>
+        </div>
+        <div class="field">
+            <label>Notes</label>
+            <textarea id="cg-notes" class="inp" placeholder="Meeting notes, decisions, blockers…"></textarea>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select id="cg-status" class="inp">
+                <option value="NotStarted">Not Started</option>
+                <option value="InProgress">In Progress</option>
+                <option value="AtRisk">At Risk</option>
+                <option value="Completed">Completed</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Members</label>
+            <div id="cg-members" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+            <button id="cg-save" class="btn btn-primary" style="flex:1;" onclick="saveCommonGoal()">Save</button>
+            <button class="btn btn-ghost" onclick="closeCommonGoalModal()">Cancel</button>
+            <button id="cg-delete" class="btn btn-danger" style="display:none;" onclick="deleteCommonGoal()">Delete</button>
+        </div>
+    </div>
+</div>
+
+@* ── Link Note Modal ──────────────────────────────────────────────────────── *@
+<div id="modal-link" class="modal-backdrop" style="display:none;">
+    <div class="modal" style="width:360px;">
+        <h3>Link Details</h3>
+        <p id="link-desc" style="font-size:12px;color:#9ca3af;margin:0 0 12px;"></p>
+        <div class="field">
+            <label>Note</label>
+            <input id="link-note-input" class="inp" placeholder="Describe how these goals relate…" />
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveLinkNote()">Save Note</button>
+            <button class="btn btn-ghost" onclick="closeLink()">Cancel</button>
+            <button class="btn btn-danger" onclick="deleteLink()">Remove</button>
+        </div>
+    </div>
+</div>
+
+@* Hidden form for antiforgery token *@
+<form id="af" method="post" style="display:none;">@Html.AntiForgeryToken()</form>
+
+<script>
+const USERS        = @Html.Raw(usersJson);
+const LINKS        = @Html.Raw(linksJson);
+const SHARED_GOALS = @Html.Raw(sharedGoalsJson);
+const PERIOD_ID    = '@Model.SelectedPeriodId';
+
+const STATUS_COLORS = {
+    NotStarted: { bg:'#374151', border:'#4b5563', text:'#9ca3af' },
+    InProgress: { bg:'#1e3a5f', border:'#2563eb', text:'#60a5fa' },
+    AtRisk:     { bg:'#451a03', border:'#d97706', text:'#fbbf24' },
+    Completed:  { bg:'#052e16', border:'#16a34a', text:'#4ade80' },
+};
+const SHARED_STYLE = { bg:'#2d1b4e', border:'#7c3aed', text:'#c4b5fd' };
+
+function getToken() {
+    return document.querySelector('#af input[name="__RequestVerificationToken"]')?.value ?? '';
+}
+async function post(handler, body) {
+    return fetch(`/Whiteboard?handler=${handler}`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/x-www-form-urlencoded', 'RequestVerificationToken': getToken() },
+        body: new URLSearchParams(body).toString()
+    });
+}
+
+// ── Build elements ────────────────────────────────────────────────────────────
+const elements = [];
+
+USERS.forEach(user => {
+    elements.push({ data:{ id:`user-${user.id}`, label:user.name, type:'user' } });
+    user.goals.forEach(goal => {
+        const c = STATUS_COLORS[goal.status] || STATUS_COLORS.NotStarted;
+        const overdue = goal.dueDate && new Date(goal.dueDate) < new Date() && goal.status !== 'Completed';
+        elements.push({ data:{
+            id:`goal-${goal.id}`, rawId:goal.id, label:goal.title,
+            status:goal.status, isPrivate:goal.isPrivate, dueDate:goal.dueDate, overdue,
+            parent:`user-${user.id}`, type:'goal', userName:user.name,
+            bg:c.bg, border:c.border, color:c.text
+        }});
+    });
+});
+
+SHARED_GOALS.forEach(sg => {
+    elements.push({ data:{
+        id:`sg-${sg.id}`, rawId:sg.id, label:sg.title, type:'shared',
+        status:sg.status, description:sg.description, notes:sg.notes,
+        memberIds:sg.memberIds,
+        bg:SHARED_STYLE.bg, border:SHARED_STYLE.border, color:SHARED_STYLE.text
+    }});
+    sg.memberIds.forEach(uid => {
+        elements.push({ data:{
+            id:`sgm-${sg.id}-${uid}`, source:`sg-${sg.id}`, target:`user-${uid}`, type:'shared-link'
+        }});
+    });
+});
+
+LINKS.forEach(link => {
+    elements.push({ data:{
+        id:`link-${link.id}`, rawId:link.id,
+        source:`goal-${link.goalId1}`, target:`goal-${link.goalId2}`,
+        note:link.note, type:'link'
+    }});
+});
+
+// ── Cytoscape ─────────────────────────────────────────────────────────────────
+const cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements,
+    style:[
+        { selector:'node[type="user"]', style:{
+            'background-color':'#1a1f30','border-color':'#2a2f45','border-width':1.5,
+            'label':'data(label)','color':'#f3f4f6','font-size':13,'font-family':'Kumbh Sans,sans-serif',
+            'font-weight':600,'text-valign':'top','text-halign':'center','text-margin-y':-8,
+            'padding':28,'shape':'roundrectangle','compound-sizing-wrt-labels':'include',
+        }},
+        { selector:'node[type="goal"]', style:{
+            'background-color':'data(bg)','border-color':'data(border)','border-width':1.5,
+            'label':'data(label)','color':'data(color)','font-size':11,
+            'font-family':'Kumbh Sans,sans-serif','text-valign':'center','text-halign':'center',
+            'text-wrap':'wrap','text-max-width':130,'width':155,'height':64,
+            'shape':'roundrectangle','padding':10,
+        }},
+        { selector:'node[type="goal"][?overdue]', style:{ 'border-color':'#ef4444','border-width':2.5 }},
+        { selector:'node[type="goal"]:selected', style:{
+            'border-color':'#4ade80','border-width':2.5,
+            'overlay-color':'#4ade80','overlay-padding':4,'overlay-opacity':0.1,
+        }},
+        { selector:'node[type="shared"]', style:{
+            'background-color':'data(bg)','border-color':'data(border)','border-width':2,
+            'label':'data(label)','color':'data(color)','font-size':12,'font-weight':600,
+            'font-family':'Kumbh Sans,sans-serif','text-valign':'center','text-halign':'center',
+            'text-wrap':'wrap','text-max-width':140,'width':160,'height':70,
+            'shape':'hexagon','padding':12,
+        }},
+        { selector:'node[type="shared"]:selected', style:{
+            'border-color':'#a78bfa','border-width':3,
+            'overlay-color':'#7c3aed','overlay-padding':4,'overlay-opacity':0.12,
+        }},
+        { selector:'edge[type="link"]', style:{
+            'width':2,'line-color':'#4ade80','line-style':'dashed','line-dash-pattern':[6,4],
+            'target-arrow-shape':'none','curve-style':'bezier','opacity':0.75,
+            'label':'data(note)','font-size':10,'color':'#6b7280',
+            'font-family':'Kumbh Sans,sans-serif',
+            'text-background-color':'#171923','text-background-opacity':1,'text-background-padding':3,
+        }},
+        { selector:'edge[type="link"]:selected', style:{ 'line-color':'#a78bfa','opacity':1,'width':2.5 }},
+        { selector:'edge[type="shared-link"]', style:{
+            'width':1.5,'line-color':'#7c3aed','line-style':'dotted',
+            'target-arrow-shape':'none','curve-style':'bezier','opacity':0.5,
+        }},
+    ],
+    layout:{ name:'cose', animate:false, nodeRepulsion:9000, idealEdgeLength:180, padding:60 },
+    wheelSensitivity:0.3, minZoom:0.15, maxZoom:3,
+});
+
+// ── Shift+click linking ───────────────────────────────────────────────────────
+let pendingLink = null;
+
+cy.on('tap','node[type="goal"]', e => {
+    if (!e.originalEvent.shiftKey) return;
+    const node = e.target;
+    if (!pendingLink) {
+        pendingLink = node;
+        node.select();
+        document.getElementById('mode-label').textContent = '🔗 Select second goal…';
+        return;
+    }
+    if (pendingLink.id() === node.id()) { pendingLink = null; cy.elements().unselect(); return; }
+    openLinkModal(pendingLink, node, null, null);
+    pendingLink = null;
+    cy.elements().unselect();
+    document.getElementById('mode-label').textContent = 'Pan mode';
+});
+
+cy.on('tap', e => {
+    if (e.target === cy) {
+        pendingLink = null;
+        cy.elements().unselect();
+        document.getElementById('mode-label').textContent = 'Pan mode';
+    }
+});
+
+// ── Click edge → link details panel ──────────────────────────────────────────
+cy.on('tap','edge[type="link"]', e => {
+    const edge = e.target;
+    openLinkModal(null, null, edge.data('rawId'), edge.data('note'), edge.id(), edge);
+});
+
+// ── Click shared goal → details panel ────────────────────────────────────────
+cy.on('tap','node[type="shared"]', e => {
+    const d = e.target.data();
+    openSharedGoalPanel(d);
+});
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+cy.on('mouseover','node[type="goal"]', e => {
+    const d = e.target.data();
+    let txt = `${d.userName} · ${d.status.replace(/([A-Z])/g,' $1').trim()}`;
+    if (d.dueDate) txt += ` · Due ${new Date(d.dueDate).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
+    if (d.overdue) txt += ' ⚠ Overdue';
+    if (d.isPrivate) txt += ' 🔒';
+    tooltip.textContent = txt; tooltip.style.display='block';
+});
+cy.on('mouseover','node[type="shared"]', e => {
+    tooltip.textContent = `Common Goal · ${e.target.data('status').replace(/([A-Z])/g,' $1').trim()}`;
+    tooltip.style.display='block';
+});
+cy.on('mouseover','edge[type="link"]', e => {
+    tooltip.textContent = e.target.data('note') ? `Note: ${e.target.data('note')}` : 'Click to add note or remove';
+    tooltip.style.display='block';
+});
+cy.on('mousemove', e => {
+    tooltip.style.left = (e.originalEvent.clientX+14)+'px';
+    tooltip.style.top  = (e.originalEvent.clientY+14)+'px';
+});
+cy.on('mouseout','node,edge', () => { tooltip.style.display='none'; });
+
+// ── Link Modal ────────────────────────────────────────────────────────────────
+let activeLinkEdge = null, activeLinkId = null, activeLinkNodes = null;
+
+function openLinkModal(n1, n2, linkId, note, cyEdgeId, cyEdge) {
+    activeLinkEdge = cyEdge ?? null;
+    activeLinkId   = linkId ?? null;
+    activeLinkNodes = n1 ? [n1, n2] : null;
+    const desc = n1
+        ? `"${n1.data('label')}"  ↔  "${n2.data('label')}"`
+        : `"${cyEdge?.source()?.data('label')}"  ↔  "${cyEdge?.target()?.data('label')}"`;
+    document.getElementById('link-desc').textContent = desc;
+    document.getElementById('link-note-input').value = note ?? '';
+    document.getElementById('modal-link').style.display='flex';
+    setTimeout(() => document.getElementById('link-note-input').focus(), 50);
+}
+
+function closeLink() { document.getElementById('modal-link').style.display='none'; }
+
+async function saveLinkNote() {
+    const note = document.getElementById('link-note-input').value.trim();
+    if (activeLinkId) {
+        // Update existing link note
+        await post('UpdateLinkNote', { linkId: activeLinkId, note });
+        if (activeLinkEdge) activeLinkEdge.data('note', note);
+    } else if (activeLinkNodes) {
+        // New link
+        const [n1, n2] = activeLinkNodes;
+        const res = await post('Link', { goalId1: n1.data('rawId'), goalId2: n2.data('rawId'), note });
+        const data = await res.json();
+        cy.add({ data:{ id:`link-${data.id}`, rawId:data.id, source:n1.id(), target:n2.id(), note, type:'link' }});
+    }
+    closeLink();
+}
+
+async function deleteLink() {
+    if (!activeLinkId && !activeLinkEdge) { closeLink(); return; }
+    if (!confirm('Remove this connection?')) return;
+    if (activeLinkId) await post('Unlink', { linkId: activeLinkId });
+    if (activeLinkEdge) cy.remove(activeLinkEdge);
+    closeLink();
+}
+
+document.getElementById('link-note-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveLinkNote();
+    if (e.key === 'Escape') closeLink();
+});
+
+// ── Common Goal Modal ─────────────────────────────────────────────────────────
+let editingSharedId = null;
+
+function openCommonGoalModal(prefill) {
+    editingSharedId = prefill?.rawId ?? null;
+    document.getElementById('modal-common-title').textContent = editingSharedId ? 'Edit Common Goal' : 'New Common Goal';
+    document.getElementById('cg-title').value   = prefill?.label ?? '';
+    document.getElementById('cg-desc').value    = prefill?.description ?? '';
+    document.getElementById('cg-notes').value   = prefill?.notes ?? '';
+    document.getElementById('cg-status').value  = prefill?.status ?? 'NotStarted';
+    document.getElementById('cg-delete').style.display = editingSharedId ? 'block' : 'none';
+
+    // Render member checkboxes
+    const wrap = document.getElementById('cg-members');
+    wrap.innerHTML = '';
+    const checkedIds = prefill?.memberIds ?? [];
+    USERS.forEach(u => {
+        const id = `chk-${u.id}`;
+        const label = document.createElement('label');
+        label.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#d1d5db;';
+        label.innerHTML = `<input type="checkbox" id="${id}" value="${u.id}" ${checkedIds.includes(u.id) ? 'checked' : ''}
+            style="accent-color:#4ade80;width:14px;height:14px;"> ${u.name}`;
+        wrap.appendChild(label);
+    });
+
+    document.getElementById('modal-common').style.display = 'flex';
+    setTimeout(() => document.getElementById('cg-title').focus(), 50);
+}
+
+function closeCommonGoalModal() { document.getElementById('modal-common').style.display='none'; editingSharedId=null; }
+
+function getCheckedMembers() {
+    return [...document.querySelectorAll('#cg-members input:checked')].map(cb => cb.value);
+}
+
+async function saveCommonGoal() {
+    const title  = document.getElementById('cg-title').value.trim();
+    if (!title) { document.getElementById('cg-title').focus(); return; }
+    const desc   = document.getElementById('cg-desc').value.trim();
+    const notes  = document.getElementById('cg-notes').value.trim();
+    const status = document.getElementById('cg-status').value;
+    const memberIds = getCheckedMembers();
+
+    if (editingSharedId) {
+        await post('UpdateSharedGoal', { id: editingSharedId, title, description: desc, notes, status });
+        const node = cy.getElementById(`sg-${editingSharedId}`);
+        if (node.length) node.data({ label:title, status, description:desc, notes });
+    } else {
+        const res = await post('CreateSharedGoal', { title, description:desc, notes, status, periodId:PERIOD_ID, memberIds: memberIds.join(',') });
+        const sg = await res.json();
+        const c = SHARED_STYLE;
+        cy.add({ data:{ id:`sg-${sg.id}`, rawId:sg.id, label:sg.title, type:'shared', status:sg.status,
+            description:sg.description, notes:sg.notes, memberIds:sg.memberIds,
+            bg:c.bg, border:c.border, color:c.text }});
+        sg.memberIds.forEach(uid => {
+            cy.add({ data:{ id:`sgm-${sg.id}-${uid}`, source:`sg-${sg.id}`, target:`user-${uid}`, type:'shared-link' }});
+        });
+        cy.getElementById(`sg-${sg.id}`).position({ x: cy.width()/2, y: cy.height()/2 });
+    }
+    closeCommonGoalModal();
+}
+
+async function deleteCommonGoal() {
+    if (!editingSharedId || !confirm('Delete this common goal?')) return;
+    await post('DeleteSharedGoal', { id: editingSharedId });
+    cy.remove(`#sg-${editingSharedId}`);
+    cy.remove(`[source="sg-${editingSharedId}"]`);
+    closeCommonGoalModal();
+    closePanel();
+}
+
+// ── Shared Goal Side Panel ────────────────────────────────────────────────────
+function openSharedGoalPanel(d) {
+    const statusLabels = { NotStarted:'Not Started', InProgress:'In Progress', AtRisk:'At Risk', Completed:'Completed' };
+    const statusColors = { NotStarted:'#4b5563', InProgress:'#2563eb', AtRisk:'#d97706', Completed:'#16a34a' };
+    const memberNames  = (d.memberIds ?? []).map(uid => USERS.find(u=>u.id===uid)?.name ?? uid);
+
+    document.getElementById('sp-title').textContent = '⬡ Common Goal';
+    document.getElementById('sp-body').innerHTML = `
+        <p style="font-size:14px;font-weight:600;color:#f3f4f6;margin:0 0 8px;">${d.label}</p>
+        <span class="status-badge" style="background:${statusColors[d.status]}22;color:${statusColors[d.status]};border:1px solid ${statusColors[d.status]}55;margin-bottom:12px;">
+            ${statusLabels[d.status]||d.status}
+        </span>
+        ${d.description ? `<p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">${d.description}</p>` : ''}
+        ${d.notes ? `
+            <div style="margin-top:14px;background:#171923;border:1px solid #2a2f45;border-radius:8px;padding:10px;">
+                <p style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin:0 0 5px;">Notes</p>
+                <p style="font-size:12px;color:#d1d5db;white-space:pre-wrap;margin:0;">${d.notes}</p>
+            </div>` : ''}
+        ${memberNames.length ? `
+            <div style="margin-top:14px;">
+                <p style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin:0 0 8px;">Members</p>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    ${memberNames.map(n=>`<span class="member-chip">${n}</span>`).join('')}
+                </div>
+            </div>` : ''}
+        <div style="margin-top:20px;display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;font-size:12px;" onclick='openCommonGoalModal(${JSON.stringify(d)})'>Edit</button>
+            <button class="btn btn-danger" style="font-size:12px;" onclick="deleteFromPanel('${d.rawId}')">Delete</button>
+        </div>`;
+    document.getElementById('side-panel').classList.add('open');
+}
+
+async function deleteFromPanel(id) {
+    if (!confirm('Delete this common goal?')) return;
+    await post('DeleteSharedGoal', { id });
+    cy.remove(`#sg-${id}`);
+    closePanel();
+}
+
+function closePanel() { document.getElementById('side-panel').classList.remove('open'); }
+
+document.addEventListener('keydown', e => { if (e.key==='Escape') { closeLink(); closeCommonGoalModal(); closePanel(); }});
+</script>
+</body>
+</html>

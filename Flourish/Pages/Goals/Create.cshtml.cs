@@ -21,6 +21,8 @@ public class CreateGoalModel(CurrentUserService currentUserService, AppDbContext
         [Required] public Guid ReviewPeriodId { get; set; }
         public GoalStatus Status { get; set; } = GoalStatus.NotStarted;
         public bool IsPrivate { get; set; }
+        public DateOnly? StartDate { get; set; }
+        public DateOnly? DueDate { get; set; }
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -55,7 +57,9 @@ public class CreateGoalModel(CurrentUserService currentUserService, AppDbContext
             Title = Input.Title,
             Description = Input.Description,
             Status = Input.Status,
-            IsPrivate = Input.IsPrivate
+            IsPrivate = Input.IsPrivate,
+            StartDate = Input.StartDate,
+            DueDate = Input.DueDate
         });
         await db.SaveChangesAsync();
 

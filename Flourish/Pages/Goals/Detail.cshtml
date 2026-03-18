@@ -26,7 +26,20 @@
         <div class="flex items-start justify-between gap-4">
             <div class="flex-1">
                 <h2 class="text-lg font-semibold text-gray-100">@Model.Goal.Title</h2>
-                <p class="text-xs text-muted mt-1">@Model.Goal.ReviewPeriod?.Name · @(Model.Goal.IsPrivate ? "Private" : "Public")</p>
+                <div class="flex items-center gap-2 mt-1 flex-wrap text-xs text-muted">
+                <span>@Model.Goal.ReviewPeriod?.Name</span>
+                <span>·</span>
+                <span>@(Model.Goal.IsPrivate ? "Private" : "Public")</span>
+                @if (Model.Goal.StartDate.HasValue)
+                {
+                    <span>· From @Model.Goal.StartDate.Value.ToString("MMM d, yyyy")</span>
+                }
+                @if (Model.Goal.DueDate.HasValue)
+                {
+                    var overdue = Model.Goal.DueDate.Value < DateOnly.FromDateTime(DateTime.Today) && Model.Goal.Status != GoalStatus.Completed;
+                    <span class="@(overdue ? "text-red-400 font-medium" : "")">· Due @Model.Goal.DueDate.Value.ToString("MMM d, yyyy")</span>
+                }
+            </div>
             </div>
             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium @statusClasses">
                 @Model.Goal.Status.ToString().Replace("NotStarted","Not Started").Replace("InProgress","In Progress").Replace("AtRisk","At Risk")
