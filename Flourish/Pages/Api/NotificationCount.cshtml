@@ -1,0 +1,10 @@
+@page "/api/notifications/count"
+@model Flourish.Pages.Api.NotificationCountModel
+@if (Model.Count > 0)
+{
+    <span id="notif-count" class="absolute -top-0.5 -right-0.5 bg-accent text-surface text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">@(Model.Count > 9 ? "9+" : Model.Count.ToString())</span>
+}
+else
+{
+    <span id="notif-count" class="hidden"></span>
+}

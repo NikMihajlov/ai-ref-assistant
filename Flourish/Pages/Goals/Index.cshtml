@@ -1,0 +1,42 @@
+@page
+@model Flourish.Pages.Goals.GoalsIndexModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = "My Goals";
+}
+
+<div class="space-y-5">
+    <div class="flex items-center justify-between">
+        <div class="flex gap-2">
+            @foreach (var period in Model.Periods)
+            {
+                <a asp-page="/Goals/Index" asp-route-periodId="@period.Id"
+                   class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors @(Model.SelectedPeriodId == period.Id ? "bg-accent text-surface" : "bg-panel border border-border text-muted hover:text-gray-200")">
+                    @period.Name
+                </a>
+            }
+        </div>
+        <a asp-page="/Goals/Create" class="inline-flex items-center gap-2 bg-accent hover:bg-accent-dim text-surface font-semibold text-sm px-4 py-2 rounded-lg transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            New Goal
+        </a>
+    </div>
+
+    @if (Model.Goals.Any())
+    {
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="divide-y divide-border">
+                @foreach (var goal in Model.Goals)
+                {
+                    <partial name="_GoalRow" model="goal" />
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bg-panel border border-border rounded-xl p-10 text-center">
+            <p class="text-muted text-sm">No goals for this period.</p>
+        </div>
+    }
+</div>

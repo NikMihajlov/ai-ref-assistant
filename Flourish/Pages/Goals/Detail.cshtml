@@ -1,0 +1,112 @@
+@page "{id:guid}"
+@model Flourish.Pages.Goals.GoalDetailModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = Model.Goal?.Title ?? "Goal";
+    var statusClasses = Model.Goal?.Status switch
+    {
+        GoalStatus.NotStarted => "bg-gray-700/50 text-gray-400",
+        GoalStatus.InProgress => "bg-blue-900/40 text-blue-400",
+        GoalStatus.AtRisk     => "bg-amber-900/40 text-amber-400",
+        GoalStatus.Completed  => "bg-green-900/40 text-accent",
+        _ => ""
+    };
+}
+
+@if (Model.Goal is null)
+{
+    <p class="text-muted">Goal not found.</p>
+    return;
+}
+
+<div class="max-w-2xl space-y-6">
+
+    @* Header *@
+    <div class="bg-panel border border-border rounded-xl p-6 space-y-4">
+        <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+                <h2 class="text-lg font-semibold text-gray-100">@Model.Goal.Title</h2>
+                <p class="text-xs text-muted mt-1">@Model.Goal.ReviewPeriod?.Name · @(Model.Goal.IsPrivate ? "Private" : "Public")</p>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium @statusClasses">
+                @Model.Goal.Status.ToString().Replace("NotStarted","Not Started").Replace("InProgress","In Progress").Replace("AtRisk","At Risk")
+            </span>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Goal.Description))
+        {
+            <p class="text-sm text-gray-400 leading-relaxed">@Model.Goal.Description</p>
+        }
+
+        @if (Model.CanEdit)
+        {
+            <div class="flex gap-3 pt-2">
+                <a asp-page="/Goals/Edit" asp-route-id="@Model.Goal.Id"
+                   class="text-xs text-muted hover:text-gray-200 border border-border px-3 py-1.5 rounded-lg transition-colors">
+                    Edit
+                </a>
+                <form method="post" asp-page-handler="Delete">
+                    <input type="hidden" name="id" value="@Model.Goal.Id" />
+                    <button type="submit" onclick="return confirm('Delete this goal?')"
+                            class="text-xs text-red-400 hover:text-red-300 border border-red-900/50 px-3 py-1.5 rounded-lg transition-colors">
+                        Delete
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+
+    @* Status update *@
+    @if (Model.CanEdit)
+    {
+        <div class="bg-panel border border-border rounded-xl p-5">
+            <h3 class="text-xs font-semibold text-muted uppercase tracking-widest mb-3">Update Status</h3>
+            <form method="post" asp-page-handler="UpdateStatus" class="flex gap-2 flex-wrap">
+                <input type="hidden" name="id" value="@Model.Goal.Id" />
+                @foreach (var status in Enum.GetValues<GoalStatus>())
+                {
+                    var label = status.ToString().Replace("NotStarted","Not Started").Replace("InProgress","In Progress").Replace("AtRisk","At Risk");
+                    var active = Model.Goal.Status == status;
+                    <button type="submit" name="status" value="@status"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors @(active ? "bg-accent/10 border-accent text-accent" : "border-border text-muted hover:text-gray-200 hover:border-gray-500")">
+                        @label
+                    </button>
+                }
+            </form>
+        </div>
+    }
+
+    @* Actionables *@
+    <div class="bg-panel border border-border rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-200">Actionables</h3>
+            <span class="text-xs text-muted">@Model.Goal.Actionables.Count(a => a.IsCompleted)/@Model.Goal.Actionables.Count</span>
+        </div>
+
+        <div id="actionables-list" class="divide-y divide-border">
+            @foreach (var action in Model.Goal.Actionables.OrderBy(a => a.CreatedAt))
+            {
+                <partial name="_ActionableRow" model="action" />
+            }
+        </div>
+
+        @if (Model.CanEdit)
+        {
+            <div class="px-5 py-4 border-t border-border">
+                <form hx-post="/Goals/@Model.Goal.Id/Actionables"
+                      hx-target="#actionables-list"
+                      hx-swap="beforeend"
+                      hx-on::after-request="this.reset()"
+                      class="flex gap-2">
+                    <input type="text" name="title" placeholder="Add an actionable..."
+                           class="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors" />
+                    <button type="submit"
+                            class="bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30 text-sm px-4 py-2 rounded-lg transition-colors">
+                        Add
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+
+</div>

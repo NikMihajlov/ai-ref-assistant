@@ -1,0 +1,49 @@
+@page
+@model Flourish.Pages.Notifications.NotificationsIndexModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = "Notifications";
+}
+
+<div class="max-w-xl">
+    <div class="bg-panel border border-border rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-200">Notifications</h3>
+            @if (Model.Notifications.Any(n => !n.IsRead))
+            {
+                <form method="post" asp-page-handler="MarkAllRead">
+                    <button type="submit" class="text-xs text-muted hover:text-gray-200 transition-colors">
+                        Mark all read
+                    </button>
+                </form>
+            }
+        </div>
+
+        @if (Model.Notifications.Any())
+        {
+            <div class="divide-y divide-border">
+                @foreach (var notif in Model.Notifications)
+                {
+                    <div class="flex items-start gap-3 px-5 py-4 @(!notif.IsRead ? "bg-accent/5" : "")">
+                        <div class="w-2 h-2 rounded-full mt-1.5 shrink-0 @(!notif.IsRead ? "bg-accent" : "bg-transparent")"></div>
+                        <div class="flex-1">
+                            @if (!string.IsNullOrEmpty(notif.LinkUrl))
+                            {
+                                <a href="@notif.LinkUrl" class="text-sm text-gray-300 hover:text-accent transition-colors">@notif.Message</a>
+                            }
+                            else
+                            {
+                                <p class="text-sm text-gray-300">@notif.Message</p>
+                            }
+                            <p class="text-xs text-muted mt-1">@notif.CreatedAt.ToString("MMM d, h:mm tt")</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="px-5 py-8 text-sm text-muted text-center">You're all caught up.</p>
+        }
+    </div>
+</div>

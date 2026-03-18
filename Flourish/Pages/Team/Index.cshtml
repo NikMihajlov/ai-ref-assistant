@@ -1,0 +1,61 @@
+@page
+@model Flourish.Pages.Team.TeamIndexModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = "Team Goals";
+}
+
+<div class="space-y-5">
+    @* Period filter *@
+    <div class="flex gap-2 flex-wrap">
+        @foreach (var period in Model.Periods)
+        {
+            <a asp-page="/Team/Index" asp-route-periodId="@period.Id"
+               class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors @(Model.SelectedPeriodId == period.Id ? "bg-accent text-surface" : "bg-panel border border-border text-muted hover:text-gray-200")">
+                @period.Name
+            </a>
+        }
+    </div>
+
+    @foreach (var member in Model.TeamMembers)
+    {
+        var memberGoals = Model.GoalsByUser.GetValueOrDefault(member.Id, []);
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+                @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                {
+                    <img src="@member.AvatarUrl" class="w-7 h-7 rounded-full" alt="@member.Name" />
+                }
+                else
+                {
+                    <div class="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
+                        @member.Name[0]
+                    </div>
+                }
+                <div>
+                    <p class="text-sm font-medium text-gray-200">@member.Name</p>
+                    <p class="text-xs text-muted">@member.Email</p>
+                </div>
+                <div class="ml-auto flex gap-2 text-xs text-muted">
+                    <span class="text-accent font-medium">@memberGoals.Count(g => g.Status == GoalStatus.Completed) completed</span>
+                    <span>·</span>
+                    <span>@memberGoals.Count total</span>
+                </div>
+            </div>
+
+            @if (memberGoals.Any())
+            {
+                <div class="divide-y divide-border">
+                    @foreach (var goal in memberGoals)
+                    {
+                        <partial name="_GoalRow" model="goal" />
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="px-5 py-4 text-sm text-muted">No goals for this period.</p>
+            }
+        </div>
+    }
+</div>

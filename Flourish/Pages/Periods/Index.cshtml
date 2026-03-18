@@ -1,0 +1,79 @@
+@page
+@model Flourish.Pages.Periods.PeriodsIndexModel
+@{
+    ViewData["Title"] = "Review Periods";
+}
+
+<div class="max-w-2xl space-y-5">
+    <div class="bg-panel border border-border rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-200">All Periods</h3>
+        </div>
+        @if (Model.Periods.Any())
+        {
+            <div class="divide-y divide-border">
+                @foreach (var period in Model.Periods)
+                {
+                    <div class="flex items-center gap-4 px-5 py-4">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-200">@period.Name</p>
+                            <p class="text-xs text-muted mt-0.5">@period.StartDate.ToString("MMM d, yyyy") — @period.EndDate.ToString("MMM d, yyyy")</p>
+                        </div>
+                        @if (period.IsActive)
+                        {
+                            <span class="text-xs font-medium text-accent bg-accent/10 px-2 py-0.5 rounded">Active</span>
+                        }
+                        <form method="post" asp-page-handler="SetActive">
+                            <input type="hidden" name="id" value="@period.Id" />
+                            <button type="submit" class="text-xs text-muted hover:text-gray-200 transition-colors">
+                                @(period.IsActive ? "Deactivate" : "Set Active")
+                            </button>
+                        </form>
+                        <form method="post" asp-page-handler="Delete">
+                            <input type="hidden" name="id" value="@period.Id" />
+                            <button type="submit" onclick="return confirm('Delete this period?')"
+                                    class="text-xs text-red-400 hover:text-red-300 transition-colors">Delete</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="px-5 py-6 text-sm text-muted text-center">No periods yet.</p>
+        }
+    </div>
+
+    @* Create form *@
+    <div class="bg-panel border border-border rounded-xl p-6">
+        <h3 class="text-sm font-semibold text-gray-200 mb-4">New Period</h3>
+        <form method="post" asp-page-handler="Create" class="space-y-4">
+            <div asp-validation-summary="ModelOnly" class="text-red-400 text-sm"></div>
+            <div>
+                <label class="block text-xs font-medium text-muted mb-1.5">Name</label>
+                <input asp-for="Input.Name" placeholder="e.g. H1 2026"
+                       class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Start Date</label>
+                    <input asp-for="Input.StartDate" type="date"
+                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">End Date</label>
+                    <input asp-for="Input.EndDate" type="date"
+                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors" />
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <input asp-for="Input.IsActive" type="checkbox" id="isActive"
+                       class="w-4 h-4 rounded border-border bg-surface accent-accent" />
+                <label for="isActive" class="text-sm text-gray-300">Set as active period</label>
+            </div>
+            <button type="submit" class="bg-accent hover:bg-accent-dim text-surface font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors">
+                Create Period
+            </button>
+        </form>
+    </div>
+</div>

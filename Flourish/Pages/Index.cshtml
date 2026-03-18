@@ -1,0 +1,74 @@
+@page
+@model Flourish.Pages.IndexModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="space-y-6">
+
+    @* Period header *@
+    @if (Model.ActivePeriod is not null)
+    {
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-xs text-muted uppercase tracking-widest mb-1">Active Period</p>
+                <h2 class="text-xl font-semibold text-gray-100">@Model.ActivePeriod.Name</h2>
+                <p class="text-sm text-muted mt-0.5">@Model.ActivePeriod.StartDate.ToString("MMM d, yyyy") — @Model.ActivePeriod.EndDate.ToString("MMM d, yyyy")</p>
+            </div>
+            <a asp-page="/Goals/Create" class="inline-flex items-center gap-2 bg-accent hover:bg-accent-dim text-surface font-semibold text-sm px-4 py-2 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                New Goal
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="bg-panel border border-border rounded-xl p-6 text-center">
+            <p class="text-muted text-sm">No active review period. A team lead needs to create one.</p>
+        </div>
+    }
+
+    @* Stats row *@
+    <div class="grid grid-cols-4 gap-4">
+        @{
+            var stats = new[] {
+                ("Total Goals", Model.TotalGoals.ToString(), "text-gray-300"),
+                ("In Progress", Model.InProgressGoals.ToString(), "text-blue-400"),
+                ("At Risk", Model.AtRiskGoals.ToString(), "text-amber-400"),
+                ("Completed", Model.CompletedGoals.ToString(), "text-accent"),
+            };
+        }
+        @foreach (var (label, value, color) in stats)
+        {
+            <div class="bg-panel border border-border rounded-xl px-5 py-4">
+                <p class="text-xs text-muted mb-1">@label</p>
+                <p class="text-2xl font-bold @color">@value</p>
+            </div>
+        }
+    </div>
+
+    @* Goals list *@
+    @if (Model.MyGoals.Any())
+    {
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-border">
+                <h3 class="text-sm font-semibold text-gray-200">My Goals</h3>
+            </div>
+            <div class="divide-y divide-border" id="goals-list">
+                @foreach (var goal in Model.MyGoals)
+                {
+                    <partial name="_GoalRow" model="goal" />
+                }
+            </div>
+        </div>
+    }
+    else if (Model.ActivePeriod is not null)
+    {
+        <div class="bg-panel border border-border rounded-xl p-10 text-center">
+            <p class="text-muted text-sm">No goals yet for this period.</p>
+            <a asp-page="/Goals/Create" class="inline-block mt-3 text-accent text-sm hover:underline">Add your first goal →</a>
+        </div>
+    }
+
+</div>

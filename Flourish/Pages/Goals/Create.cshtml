@@ -1,0 +1,64 @@
+@page
+@model Flourish.Pages.Goals.CreateGoalModel
+@{
+    ViewData["Title"] = "New Goal";
+}
+
+<div class="max-w-2xl">
+    <div class="bg-panel border border-border rounded-xl p-6">
+        <form method="post" class="space-y-5">
+            <div asp-validation-summary="ModelOnly" class="text-red-400 text-sm"></div>
+
+            <div>
+                <label class="block text-xs font-medium text-muted mb-1.5">Title</label>
+                <input asp-for="Input.Title" placeholder="e.g. Improve code review quality"
+                       class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors" />
+                <span asp-validation-for="Input.Title" class="text-red-400 text-xs mt-1 block"></span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-muted mb-1.5">Description <span class="text-muted font-normal">(optional)</span></label>
+                <textarea asp-for="Input.Description" rows="4" placeholder="What does success look like?"
+                          class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-muted focus:outline-none focus:border-accent transition-colors resize-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Review Period</label>
+                    <select asp-for="Input.ReviewPeriodId" asp-items="Model.PeriodOptions"
+                            class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors">
+                    </select>
+                    <span asp-validation-for="Input.ReviewPeriodId" class="text-red-400 text-xs mt-1 block"></span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Status</label>
+                    <select asp-for="Input.Status"
+                            class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors">
+                        <option value="NotStarted">Not Started</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="AtRisk">At Risk</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <input asp-for="Input.IsPrivate" type="checkbox" id="isPrivate"
+                       class="w-4 h-4 rounded border-border bg-surface accent-accent" />
+                <label for="isPrivate" class="text-sm text-gray-300">
+                    Private — only visible to you, your manager, and the team lead
+                </label>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="bg-accent hover:bg-accent-dim text-surface font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors">
+                    Create Goal
+                </button>
+                <a asp-page="/Goals/Index" class="text-muted hover:text-gray-200 text-sm px-5 py-2.5 rounded-lg border border-border transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>

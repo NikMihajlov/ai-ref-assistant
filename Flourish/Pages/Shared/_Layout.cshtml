@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Flourish</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Kumbh Sans', 'sans-serif'] },
+                    colors: {
+                        surface: '#171923',
+                        panel: '#1e2130',
+                        border: '#2a2f45',
+                        accent: '#4ade80',
+                        'accent-dim': '#16a34a',
+                        muted: '#6b7280',
+                        subtle: '#374151',
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .htmx-indicator { opacity: 0; transition: opacity 200ms; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+    </style>
+</head>
+<body class="bg-surface text-gray-100 font-sans min-h-screen flex">
+
+    @* Sidebar *@
+    <aside class="w-56 shrink-0 bg-panel border-r border-border flex flex-col fixed h-full z-10">
+        <div class="px-5 py-5 border-b border-border">
+            <span class="text-accent font-bold text-lg tracking-tight">Flourish</span>
+            <span class="text-muted text-xs ml-1">by GreenCell</span>
+        </div>
+
+        @{
+            var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+        }
+
+        <nav class="flex-1 px-3 py-4 space-y-1">
+            <a asp-page="/Index"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(currentPage == "/Index" ? "bg-accent/10 text-accent font-medium" : "text-gray-400 hover:text-gray-100 hover:bg-subtle/50")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/></svg>
+                Dashboard
+            </a>
+            <a asp-page="/Goals/Index"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(currentPage.StartsWith("/Goals") ? "bg-accent/10 text-accent font-medium" : "text-gray-400 hover:text-gray-100 hover:bg-subtle/50")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                My Goals
+            </a>
+
+            @if (ViewData["IsManagerOrLead"] as bool? == true)
+            {
+                <a asp-page="/Team/Index"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(currentPage.StartsWith("/Team") ? "bg-accent/10 text-accent font-medium" : "text-gray-400 hover:text-gray-100 hover:bg-subtle/50")">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    Team
+                </a>
+            }
+
+            <a asp-page="/Reviews/Index"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(currentPage.StartsWith("/Reviews") ? "bg-accent/10 text-accent font-medium" : "text-gray-400 hover:text-gray-100 hover:bg-subtle/50")">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Reviews
+            </a>
+
+            @if (ViewData["IsTeamLead"] as bool? == true)
+            {
+                <a asp-page="/Periods/Index"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(currentPage.StartsWith("/Periods") ? "bg-accent/10 text-accent font-medium" : "text-gray-400 hover:text-gray-100 hover:bg-subtle/50")">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Periods
+                </a>
+            }
+        </nav>
+
+        @* User profile at bottom *@
+        <div class="px-4 py-4 border-t border-border">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <div class="flex items-center gap-3">
+                    @{
+                        var avatarUrl = ViewData["AvatarUrl"] as string;
+                        var userName = User.Identity.Name ?? "User";
+                    }
+                    @if (!string.IsNullOrEmpty(avatarUrl))
+                    {
+                        <img src="@avatarUrl" class="w-7 h-7 rounded-full" alt="avatar" />
+                    }
+                    else
+                    {
+                        <div class="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
+                            @userName[0]
+                        </div>
+                    }
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium text-gray-200 truncate">@userName</p>
+                        <p class="text-xs text-muted truncate">@ViewData["UserRole"]</p>
+                    </div>
+                </div>
+                <form method="post" asp-page="/Account/Logout" class="mt-3">
+                    <button type="submit" class="text-xs text-muted hover:text-gray-300 transition-colors">Sign out</button>
+                </form>
+            }
+        </div>
+    </aside>
+
+    @* Main content *@
+    <div class="ml-56 flex-1 flex flex-col min-h-screen">
+        @* Top bar *@
+        <header class="h-14 border-b border-border bg-panel/50 flex items-center px-6 justify-between sticky top-0 z-10">
+            <h1 class="text-sm font-semibold text-gray-200">@ViewData["Title"]</h1>
+
+            @* Notification bell *@
+            <div class="relative"
+                 hx-get="/api/notifications/count"
+                 hx-trigger="load, every 30s"
+                 hx-target="#notif-count">
+                <a asp-page="/Notifications" class="relative p-2 text-muted hover:text-gray-200 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                    <span id="notif-count" class="absolute -top-0.5 -right-0.5 bg-accent text-surface text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center hidden"></span>
+                </a>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6">
+            @RenderBody()
+        </main>
+    </div>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

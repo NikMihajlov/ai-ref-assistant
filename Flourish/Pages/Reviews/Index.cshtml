@@ -1,0 +1,82 @@
+@page
+@model Flourish.Pages.Reviews.ReviewsIndexModel
+@using Flourish.Models
+@{
+    ViewData["Title"] = "Reviews";
+}
+
+<div class="max-w-2xl space-y-6">
+
+    @* Upcoming reviews *@
+    <div class="bg-panel border border-border rounded-xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-border">
+            <h3 class="text-sm font-semibold text-gray-200">Upcoming Reviews</h3>
+        </div>
+        @if (Model.MyReviews.Any())
+        {
+            <div class="divide-y divide-border">
+                @foreach (var review in Model.MyReviews)
+                {
+                    <div class="px-5 py-4 flex items-center gap-4">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-200">
+                                Review with @(review.Reviewer?.Name ?? "—")
+                            </p>
+                            <p class="text-xs text-muted mt-0.5">
+                                @review.ReviewPeriod?.Name · @review.ScheduledAt.ToString("MMM d, yyyy h:mm tt")
+                            </p>
+                        </div>
+                        @if (!string.IsNullOrEmpty(review.MeetLink))
+                        {
+                            <a href="@review.MeetLink" target="_blank"
+                               class="text-xs text-accent hover:underline">Join Meet</a>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="px-5 py-6 text-sm text-muted text-center">No upcoming reviews scheduled.</p>
+        }
+    </div>
+
+    @* Schedule new review — managers/team lead only *@
+    @if (Model.CanSchedule)
+    {
+        <div class="bg-panel border border-border rounded-xl p-6">
+            <h3 class="text-sm font-semibold text-gray-200 mb-4">Schedule a Review</h3>
+            <form method="post" class="space-y-4">
+                <div asp-validation-summary="ModelOnly" class="text-red-400 text-sm"></div>
+
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Employee</label>
+                    <select asp-for="Input.RevieweeId" asp-items="Model.EmployeeOptions"
+                            class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors">
+                        <option value="">Select employee...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Review Period</label>
+                    <select asp-for="Input.ReviewPeriodId" asp-items="Model.PeriodOptions"
+                            class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors">
+                        <option value="">Select period...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-muted mb-1.5">Date & Time</label>
+                    <input asp-for="Input.ScheduledAt" type="datetime-local"
+                           class="w-full bg-surface border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent transition-colors" />
+                </div>
+
+                <button type="submit"
+                        class="bg-accent hover:bg-accent-dim text-surface font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors">
+                    Schedule & Create Calendar Event
+                </button>
+            </form>
+        </div>
+    }
+
+</div>

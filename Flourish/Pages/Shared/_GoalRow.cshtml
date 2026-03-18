@@ -1,0 +1,59 @@
+@model Flourish.Models.Goal
+@using Flourish.Models
+
+@{
+    var statusClasses = Model.Status switch
+    {
+        GoalStatus.NotStarted => "bg-gray-700/50 text-gray-400",
+        GoalStatus.InProgress => "bg-blue-900/40 text-blue-400",
+        GoalStatus.AtRisk     => "bg-amber-900/40 text-amber-400",
+        GoalStatus.Completed  => "bg-green-900/40 text-accent",
+        _ => ""
+    };
+    var statusLabel = Model.Status switch
+    {
+        GoalStatus.NotStarted => "Not Started",
+        GoalStatus.InProgress => "In Progress",
+        GoalStatus.AtRisk     => "At Risk",
+        GoalStatus.Completed  => "Completed",
+        _ => ""
+    };
+    var completed = Model.Actionables.Count(a => a.IsCompleted);
+    var total = Model.Actionables.Count;
+    var progress = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+}
+
+<div class="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors group">
+    <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+            <a asp-page="/Goals/Detail" asp-route-id="@Model.Id"
+               class="text-sm font-medium text-gray-200 hover:text-accent transition-colors truncate">
+                @Model.Title
+            </a>
+            @if (Model.IsPrivate)
+            {
+                <svg class="w-3.5 h-3.5 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            }
+        </div>
+        @if (total > 0)
+        {
+            <div class="flex items-center gap-2 mt-1.5">
+                <div class="flex-1 max-w-32 h-1 bg-border rounded-full overflow-hidden">
+                    <div class="h-full bg-accent rounded-full transition-all" style="width: @progress%"></div>
+                </div>
+                <span class="text-xs text-muted">@completed/@total</span>
+            </div>
+        }
+    </div>
+
+    @* Status pill — HTMX inline update *@
+    <div hx-get="/Goals/@Model.Id/StatusPicker"
+         hx-trigger="click"
+         hx-target="closest div[hx-get]"
+         hx-swap="outerHTML"
+         class="cursor-pointer">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium @statusClasses">
+            @statusLabel
+        </span>
+    </div>
+</div>
