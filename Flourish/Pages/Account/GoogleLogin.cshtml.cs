@@ -9,7 +9,7 @@ public class GoogleLoginModel : PageModel
 {
     public IActionResult OnGet(string? returnUrl = null)
     {
-        var redirectUrl = Url.Page("/Account/GoogleCallback", values: new { returnUrl });
+        var redirectUrl = returnUrl ?? Url.Page("/Index");
         var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
         return Challenge(properties, GoogleDefaults.AuthenticationScheme);
     }
