@@ -16,6 +16,7 @@ public class ReviewsIndexModel(
     NotificationService notifications) : FlourishPageModel(currentUserService)
 {
     public List<ReviewEvent> MyReviews { get; set; } = [];
+    public List<ReviewEvent> ReviewsIConducting { get; set; } = [];
     public bool CanSchedule { get; set; }
     public List<SelectListItem> EmployeeOptions { get; set; } = [];
     public List<SelectListItem> PeriodOptions { get; set; } = [];
@@ -42,7 +43,17 @@ public class ReviewsIndexModel(
             .OrderBy(re => re.ScheduledAt)
             .ToListAsync();
 
-        if (CanSchedule) await LoadSelectsAsync(user);
+        if (CanSchedule)
+        {
+            ReviewsIConducting = await db.ReviewEvents
+                .Include(re => re.Reviewee)
+                .Include(re => re.ReviewPeriod)
+                .Where(re => re.ReviewerId == user.Id && re.ScheduledAt >= DateTime.UtcNow)
+                .OrderBy(re => re.ScheduledAt)
+                .ToListAsync();
+
+            await LoadSelectsAsync(user);
+        }
 
         return Page();
     }
@@ -82,14 +93,18 @@ public class ReviewsIndexModel(
 
         // Use the reviewer's saved OAuth token so the event appears on their own calendar
         var accessToken = await HttpContext.GetTokenAsync("access_token");
+        var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
 
         // Create Google Calendar event
-        var (eventId, meetLink) = await calendarService.CreateReviewEventAsync(reviewEvent, reviewee, user, teamLead, accessToken);
+        var (eventId, meetLink) = await calendarService.CreateReviewEventAsync(reviewEvent, reviewee, user, teamLead, accessToken, refreshToken);
         reviewEvent.GoogleCalendarEventId = eventId;
         reviewEvent.MeetLink = meetLink;
 
         db.ReviewEvents.Add(reviewEvent);
         await db.SaveChangesAsync();
+
+        if (string.IsNullOrEmpty(eventId))
+            TempData["CalendarWarning"] = "Review saved, but the Google Calendar invite could not be created. Check that the Calendar API is enabled and try re-scheduling.";
 
         // Notify reviewee
         await notifications.NotifyAsync(reviewee.Id, NotificationType.ReviewScheduled,

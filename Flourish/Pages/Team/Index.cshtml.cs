@@ -10,6 +10,7 @@ public class TeamIndexModel(CurrentUserService currentUserService, AppDbContext 
 {
     public List<User> TeamMembers { get; set; } = [];
     public Dictionary<Guid, List<Goal>> GoalsByUser { get; set; } = [];
+    public Dictionary<Guid, ReviewEvent?> NextReviewByUser { get; set; } = [];
     public List<ReviewPeriod> Periods { get; set; } = [];
     public Guid? SelectedPeriodId { get; set; }
 
@@ -25,9 +26,10 @@ public class TeamIndexModel(CurrentUserService currentUserService, AppDbContext 
             ? await db.Users.Where(u => u.Id != user.Id).OrderBy(u => u.Name).ToListAsync()
             : await db.Users.Where(u => u.ManagerId == user.Id).OrderBy(u => u.Name).ToListAsync();
 
+        var memberIds = TeamMembers.Select(m => m.Id).ToList();
+
         if (SelectedPeriodId.HasValue)
         {
-            var memberIds = TeamMembers.Select(m => m.Id).ToList();
             var goals = await db.Goals
                 .Where(g => memberIds.Contains(g.UserId) && g.ReviewPeriodId == SelectedPeriodId)
                 .Include(g => g.Actionables)
@@ -38,6 +40,15 @@ public class TeamIndexModel(CurrentUserService currentUserService, AppDbContext 
                 .GroupBy(g => g.UserId)
                 .ToDictionary(gr => gr.Key, gr => gr.ToList());
         }
+
+        var upcomingReviews = await db.ReviewEvents
+            .Where(r => memberIds.Contains(r.RevieweeId) && r.ScheduledAt >= DateTime.UtcNow)
+            .OrderBy(r => r.ScheduledAt)
+            .ToListAsync();
+
+        NextReviewByUser = TeamMembers.ToDictionary(
+            m => m.Id,
+            m => upcomingReviews.FirstOrDefault(r => r.RevieweeId == m.Id));
 
         return Page();
     }

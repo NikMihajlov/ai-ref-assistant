@@ -14,10 +14,13 @@ public class IndexModel(CurrentUserService currentUserService, AppDbContext db) 
     public int CompletedGoals { get; set; }
     public int InProgressGoals { get; set; }
     public int AtRiskGoals { get; set; }
+    public List<ReviewEvent> UpcomingReviews { get; set; } = [];
+    public Guid CurrentUserId { get; set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await CurrentUserService.GetRequiredAsync();
+        CurrentUserId = user.Id;
 
         ActivePeriod = await db.ReviewPeriods
             .Where(rp => rp.IsActive)
@@ -37,6 +40,15 @@ public class IndexModel(CurrentUserService currentUserService, AppDbContext db) 
         CompletedGoals = MyGoals.Count(g => g.Status == GoalStatus.Completed);
         InProgressGoals = MyGoals.Count(g => g.Status == GoalStatus.InProgress);
         AtRiskGoals = MyGoals.Count(g => g.Status == GoalStatus.AtRisk);
+
+        UpcomingReviews = await db.ReviewEvents
+            .Where(r => (r.RevieweeId == user.Id || r.ReviewerId == user.Id) && r.ScheduledAt >= DateTime.UtcNow)
+            .Include(r => r.Reviewer)
+            .Include(r => r.Reviewee)
+            .Include(r => r.ReviewPeriod)
+            .OrderBy(r => r.ScheduledAt)
+            .Take(3)
+            .ToListAsync();
 
         return Page();
     }

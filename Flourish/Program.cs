@@ -31,17 +31,22 @@ builder.Services.AddAuthentication(options =>
         options.SaveTokens = true;
 
         var publicUrl = builder.Configuration["PublicUrl"]?.TrimEnd('/');
-        if (!string.IsNullOrEmpty(publicUrl))
+        options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
         {
-            options.Events.OnRedirectToAuthorizationEndpoint = ctx =>
-            {
-                var redirect = ctx.RedirectUri.Replace(
+            var redirect = ctx.RedirectUri;
+
+            // Override redirect_uri when running behind a tunnel/proxy
+            if (!string.IsNullOrEmpty(publicUrl))
+                redirect = redirect.Replace(
                     Uri.EscapeDataString("http://localhost:5005/signin-google"),
                     Uri.EscapeDataString($"{publicUrl}/signin-google"));
-                ctx.Response.Redirect(redirect);
-                return Task.CompletedTask;
-            };
-        }
+
+            // Request offline access so Google returns a refresh token
+            redirect += "&access_type=offline&prompt=consent";
+
+            ctx.Response.Redirect(redirect);
+            return Task.CompletedTask;
+        };
 
         options.Events.OnTicketReceived = async ctx =>
         {

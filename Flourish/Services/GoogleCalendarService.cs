@@ -1,5 +1,7 @@
 using Flourish.Models;
 using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Http;
@@ -10,19 +12,20 @@ namespace Flourish.Services;
 public class GoogleCalendarService(IConfiguration config, ILogger<GoogleCalendarService> logger)
 {
     /// <summary>
-    /// Creates a Google Calendar event using the reviewer's OAuth access token so the event
-    /// appears directly on their calendar. Falls back to service account if no token is provided.
+    /// Creates a Google Calendar event using the reviewer's OAuth tokens so the event
+    /// appears directly on their calendar. Uses UserCredential for auto-refresh when possible.
     /// </summary>
     public async Task<(string EventId, string? MeetLink)> CreateReviewEventAsync(
         ReviewEvent reviewEvent,
         User reviewee,
         User reviewer,
         User teamLead,
-        string? reviewerAccessToken = null)
+        string? reviewerAccessToken = null,
+        string? reviewerRefreshToken = null)
     {
         try
         {
-            var service = BuildCalendarService(reviewerAccessToken);
+            var service = BuildCalendarService(reviewerAccessToken, reviewerRefreshToken);
 
             // Build unique attendee list (team lead may be the same person as reviewer)
             var attendees = new List<EventAttendee>
@@ -72,15 +75,32 @@ public class GoogleCalendarService(IConfiguration config, ILogger<GoogleCalendar
         }
     }
 
-    private CalendarService BuildCalendarService(string? accessToken)
+    private CalendarService BuildCalendarService(string? accessToken, string? refreshToken)
     {
         IConfigurableHttpClientInitializer credential;
 
-        if (!string.IsNullOrEmpty(accessToken))
+        if (!string.IsNullOrEmpty(refreshToken))
         {
-            // Use the reviewer's own OAuth token — event appears on their calendar as organizer
-            credential = GoogleCredential.FromAccessToken(accessToken)
-                .CreateScoped(CalendarService.Scope.Calendar);
+            // Use UserCredential with refresh token — auto-refreshes when the access token expires.
+            var clientId = config["Google:ClientId"]!;
+            var clientSecret = config["Google:ClientSecret"]!;
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets { ClientId = clientId, ClientSecret = clientSecret },
+                Scopes = [CalendarService.Scope.Calendar]
+            });
+
+            credential = new UserCredential(flow, "user", new TokenResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
+            });
+        }
+        else if (!string.IsNullOrEmpty(accessToken))
+        {
+            // Fall back to raw access token (no auto-refresh, may expire after 1 hour).
+            credential = GoogleCredential.FromAccessToken(accessToken);
         }
         else
         {
