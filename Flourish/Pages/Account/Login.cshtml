@@ -10,34 +10,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign in — Flourish</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { fontFamily: { sans: ['Kumbh Sans', 'sans-serif'] }, colors: { surface: '#171923', panel: '#1e2130', border: '#2a2f45', accent: '#4ade80' } } }
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Kumbh Sans', 'sans-serif'] },
+                    colors: {
+                        surface: '#0f1117',
+                        panel:   '#161b27',
+                        border:  '#232a3d',
+                        accent:  '#4ade80',
+                        'accent-dim': '#22c55e',
+                    },
+                    animation: {
+                        'float-slow': 'float 8s ease-in-out infinite',
+                        'float-med':  'float 6s ease-in-out infinite 1s',
+                        'float-fast': 'float 5s ease-in-out infinite 2s',
+                        'fade-up':    'fadeUp 0.6s ease-out both',
+                    },
+                    keyframes: {
+                        float:  { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-18px)' } },
+                        fadeUp: { from: { opacity: '0', transform: 'translateY(20px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+                    }
+                }
+            }
         }
     </script>
+    <style>
+        .bg-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 55% 45% at 10% 15%, rgba(74,222,128,0.30) 0%, transparent 65%),
+                radial-gradient(ellipse 50% 40% at 88% 80%, rgba(34,197,94,0.22) 0%, transparent 60%),
+                radial-gradient(ellipse 35% 30% at 55% 5%,  rgba(16,185,129,0.18) 0%, transparent 55%),
+                #0d1117;
+        }
+
+        /* Grid pattern overlay */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(74,222,128,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(74,222,128,0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 10%, transparent 100%);
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 10%, transparent 100%);
+        }
+
+        /* Glass card */
+        .glass {
+            background: rgba(22, 27, 39, 0.80);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(74, 222, 128, 0.14);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        /* Google button shimmer on hover */
+        .google-btn {
+            position: relative;
+            overflow: hidden;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+        }
+        .google-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(74, 222, 128, 0.35);
+            transform: translateY(-1px);
+        }
+        .google-btn:active { transform: translateY(0); }
+        .google-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+            transform: translateX(-100%);
+            transition: transform 0.4s;
+        }
+        .google-btn:hover::after { transform: translateX(100%); }
+    </style>
 </head>
-<body class="bg-surface font-sans flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-sm">
+<body class="bg-[#0d1117] font-sans min-h-screen flex items-center justify-center relative overflow-hidden">
+
+    <!-- Background scene -->
+    <div class="bg-scene"></div>
+
+    <!-- Grid overlay -->
+    <div class="grid-overlay"></div>
+
+    <!-- Card -->
+    <div class="relative z-10 w-full max-w-sm px-4 animate-fade-up">
+
+        <!-- Logo -->
         <div class="text-center mb-8">
-            <span class="text-accent font-bold text-2xl tracking-tight">Flourish</span>
-            <p class="text-gray-500 text-sm mt-1">by GreenCell</p>
+            <div class="inline-flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7z"/>
+                        <circle cx="12" cy="9" r="2.5" stroke-width="2"/>
+                    </svg>
+                </div>
+                <span class="text-accent font-bold text-2xl tracking-tight">Flourish</span>
+            </div>
+            <p class="text-gray-500 text-sm">Performance management by <span class="text-gray-400 font-medium">GreenCell</span></p>
         </div>
-        <div class="bg-panel border border-border rounded-2xl p-8">
-            <h1 class="text-lg font-semibold text-gray-100 mb-1">Welcome back</h1>
-            <p class="text-gray-500 text-sm mb-6">Sign in with your GreenCell account</p>
+
+        <!-- Glass panel -->
+        <div class="glass rounded-2xl p-8">
+            <h1 class="text-xl font-semibold text-white mb-1">Welcome back</h1>
+            <p class="text-gray-400 text-sm mb-7">Sign in with your GreenCell account to continue</p>
 
             @if (!string.IsNullOrEmpty(Model.ErrorMessage))
             {
-                <div class="bg-red-900/30 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
+                <div class="bg-red-900/30 border border-red-700/60 text-red-300 text-sm rounded-xl px-4 py-3 mb-5">
                     @Model.ErrorMessage
                 </div>
             }
 
-            <a href="/Account/GoogleLogin"
-               class="flex items-center justify-center gap-3 w-full bg-white/5 hover:bg-white/10 border border-border rounded-xl px-4 py-3 text-sm text-gray-200 font-medium transition-colors">
-                <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <a href="/Account/GoogleLogin" class="google-btn flex items-center justify-center gap-3 w-full rounded-xl px-4 py-3 text-sm text-gray-200 font-medium">
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -45,8 +142,17 @@
                 </svg>
                 Continue with Google
             </a>
+
+            <div class="mt-6 pt-6 border-t border-white/5 flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                <p class="text-xs text-gray-600">Secured with Google OAuth 2.0</p>
+            </div>
         </div>
-        <p class="text-center text-xs text-gray-600 mt-6">&copy; @DateTime.Now.Year GreenCell</p>
+
+        <p class="text-center text-xs text-gray-700 mt-6">&copy; @DateTime.Now.Year GreenCell. All rights reserved.</p>
     </div>
+
 </body>
 </html>
