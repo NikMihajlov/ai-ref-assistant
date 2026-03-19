@@ -25,9 +25,9 @@
         }
     </script>
     <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
-    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
-    <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
+    <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+    <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -278,7 +278,9 @@ LINKS.forEach(link => {
 });
 
 // ── Cytoscape ─────────────────────────────────────────────────────────────────
-cytoscape.use(fcose);
+if (typeof fcose !== 'undefined') cytoscape.use(fcose);
+
+const useFcose = typeof fcose !== 'undefined';
 
 const cy = cytoscape({
     container: document.getElementById('cy'),
@@ -326,7 +328,7 @@ const cy = cytoscape({
             'target-arrow-shape':'none','curve-style':'bezier','opacity':0.5,
         }},
     ],
-    layout:{
+    layout: useFcose ? {
         name: 'fcose',
         animate: false,
         quality: 'proof',
@@ -342,6 +344,19 @@ const cy = cytoscape({
         tile: true,
         tilingPaddingVertical: 20,
         tilingPaddingHorizontal: 20,
+    } : {
+        name: 'cose',
+        animate: false,
+        nodeRepulsion: () => 400000,
+        nodeOverlap: 20,
+        idealEdgeLength: () => 200,
+        edgeElasticity: () => 0.45,
+        gravity: 0.15,
+        numIter: 1500,
+        padding: 80,
+        componentSpacing: 120,
+        coolingFactor: 0.95,
+        initialTemp: 800,
     },
     wheelSensitivity:0.3, minZoom:0.15, maxZoom:3,
 });
