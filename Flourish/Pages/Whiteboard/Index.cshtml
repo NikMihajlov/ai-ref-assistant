@@ -25,6 +25,9 @@
         }
     </script>
     <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin:0; overflow:hidden; background:#171923; font-family:'Kumbh Sans',sans-serif; color:#e5e7eb; }
@@ -220,6 +223,8 @@ LINKS.forEach(link => {
 });
 
 // ── Cytoscape ─────────────────────────────────────────────────────────────────
+cytoscape.use(fcose);
+
 const cy = cytoscape({
     container: document.getElementById('cy'),
     elements,
@@ -266,7 +271,23 @@ const cy = cytoscape({
             'target-arrow-shape':'none','curve-style':'bezier','opacity':0.5,
         }},
     ],
-    layout:{ name:'cose', animate:false, nodeRepulsion:9000, idealEdgeLength:180, padding:60 },
+    layout:{
+        name: 'fcose',
+        animate: false,
+        quality: 'proof',
+        randomize: true,
+        padding: 80,
+        nodeSeparation: 200,
+        nodeRepulsion: () => 8500,
+        idealEdgeLength: () => 220,
+        edgeElasticity: () => 0.45,
+        gravity: 0.25,
+        gravityRange: 3.8,
+        numIter: 2500,
+        tile: true,
+        tilingPaddingVertical: 20,
+        tilingPaddingHorizontal: 20,
+    },
     wheelSensitivity:0.3, minZoom:0.15, maxZoom:3,
 });
 
