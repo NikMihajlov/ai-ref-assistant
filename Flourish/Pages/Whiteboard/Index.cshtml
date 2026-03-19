@@ -30,8 +30,16 @@
     <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
     <style>
         * { box-sizing: border-box; }
-        body { margin:0; overflow:hidden; background:#171923; font-family:'Kumbh Sans',sans-serif; color:#e5e7eb; }
-        #cy { position:absolute; inset:48px 0 0 0; }
+        body {
+            margin:0; overflow:hidden; font-family:'Kumbh Sans',sans-serif; color:#e5e7eb;
+            background-color: #070e1a;
+            background-image:
+                radial-gradient(circle, rgba(74,222,128,0.18) 1px, transparent 1px),
+                linear-gradient(rgba(74,222,128,0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(74,222,128,0.035) 1px, transparent 1px);
+            background-size: 28px 28px, 112px 112px, 112px 112px;
+        }
+        #cy { position:absolute; inset:88px 0 0 0; }
         .tooltip { position:fixed; background:#1e2130; border:1px solid #2a2f45; color:#e5e7eb; font-size:11px; padding:5px 9px; border-radius:7px; pointer-events:none; z-index:50; white-space:nowrap; }
         .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:60; display:flex; align-items:center; justify-content:center; }
         .modal { background:#1e2130; border:1px solid #2a2f45; border-radius:14px; padding:24px; width:420px; max-height:90vh; overflow-y:auto; }
@@ -54,14 +62,28 @@
         .side-panel-body { flex:1; overflow-y:auto; padding:16px; }
         .status-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:500; }
         .member-chip { display:inline-flex; align-items:center; gap:5px; background:#171923; border:1px solid #2a2f45; border-radius:20px; padding:3px 10px; font-size:11px; color:#d1d5db; }
+
+        /* Filter bar */
+        #filter-bar { position:fixed; top:48px; left:0; right:0; height:40px; background:rgba(7,14,26,0.88); backdrop-filter:blur(8px); border-bottom:1px solid #1a2236; display:flex; align-items:center; padding:0 16px; gap:8px; z-index:29; }
+        .filter-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid; transition:all .15s; user-select:none; }
+        .filter-chip.off { opacity:0.35; filter:grayscale(0.6); }
+
+        /* Search */
+        .search-wrap { position:relative; margin-left:auto; }
+        .search-wrap svg { position:absolute; left:8px; top:50%; transform:translateY(-50%); pointer-events:none; color:#4b5563; }
+        #search-input { background:rgba(255,255,255,0.05); border:1px solid #1e2d44; border-radius:8px; padding:4px 10px 4px 28px; font-size:12px; color:#e5e7eb; font-family:inherit; outline:none; width:190px; transition:border-color .15s, width .2s; }
+        #search-input::placeholder { color:#4b5563; }
+        #search-input:focus { border-color:#4ade80; width:240px; }
+        #search-clear { position:absolute; right:7px; top:50%; transform:translateY(-50%); background:none; border:none; color:#4b5563; cursor:pointer; font-size:13px; padding:0; display:none; }
+        #search-clear.visible { display:block; }
     </style>
 </head>
 <body>
 
 @* ── Top bar ──────────────────────────────────────────────────────────────── *@
-<div style="position:fixed;top:0;left:0;right:0;height:48px;background:#1e2130cc;backdrop-filter:blur(8px);border-bottom:1px solid #2a2f45;display:flex;align-items:center;padding:0 16px;gap:12px;z-index:30;">
+<div style="position:fixed;top:0;left:0;right:0;height:48px;background:rgba(7,14,26,0.92);backdrop-filter:blur(10px);border-bottom:1px solid #1a2236;display:flex;align-items:center;padding:0 16px;gap:12px;z-index:30;">
     <a href="/" style="color:#4ade80;font-weight:700;font-size:13px;text-decoration:none;">Flourish</a>
-    <span style="color:#2a2f45;">|</span>
+    <span style="color:#1a2236;">|</span>
     <span style="color:#d1d5db;font-size:13px;font-weight:500;">Whiteboard</span>
 
     @* Period switcher *@
@@ -69,7 +91,7 @@
         @foreach (var period in Model.Periods)
         {
             <a asp-page="/Whiteboard/Index" asp-route-periodId="@period.Id"
-               style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;text-decoration:none;transition:all .15s;@(Model.SelectedPeriodId == period.Id ? "background:#4ade80;color:#171923;" : "border:1px solid #2a2f45;color:#6b7280;")">
+               style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:500;text-decoration:none;transition:all .15s;@(Model.SelectedPeriodId == period.Id ? "background:#4ade80;color:#0a1628;" : "border:1px solid #1e2d44;color:#6b7280;")">
                 @period.Name
             </a>
         }
@@ -80,9 +102,42 @@
             + Common Goal
         </button>
         <span id="mode-label" style="font-size:12px;color:#4ade80;font-weight:500;">Pan mode</span>
-        <span style="color:#2a2f45;font-size:12px;">|</span>
-        <span style="font-size:11px;color:#6b7280;"><kbd style="background:#171923;border:1px solid #2a2f45;border-radius:4px;padding:1px 5px;color:#d1d5db;">Shift</kbd>+click two goals to link</span>
-        <button onclick="cy.fit()" style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit;">⟲ Reset</button>
+        <span style="color:#1a2236;font-size:12px;">|</span>
+        <span style="font-size:11px;color:#6b7280;"><kbd style="background:#0a1628;border:1px solid #1e2d44;border-radius:4px;padding:1px 5px;color:#d1d5db;">Shift</kbd>+click two goals to link</span>
+        <button onclick="cy.fit()" style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit;">⟲ Reset view</button>
+    </div>
+</div>
+
+@* ── Filter bar ────────────────────────────────────────────────────────────── *@
+<div id="filter-bar">
+    <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#374151;font-weight:600;margin-right:4px;">Filter</span>
+    <button class="filter-chip" id="chip-NotStarted"
+            style="background:#37415122;color:#9ca3af;border-color:#4b5563;"
+            onclick="toggleFilter('NotStarted')">
+        <span style="width:6px;height:6px;border-radius:50%;background:#6b7280;display:inline-block;"></span> Not Started
+    </button>
+    <button class="filter-chip" id="chip-InProgress"
+            style="background:#1e3a5f22;color:#60a5fa;border-color:#2563eb;"
+            onclick="toggleFilter('InProgress')">
+        <span style="width:6px;height:6px;border-radius:50%;background:#2563eb;display:inline-block;"></span> In Progress
+    </button>
+    <button class="filter-chip" id="chip-AtRisk"
+            style="background:#451a0322;color:#fbbf24;border-color:#d97706;"
+            onclick="toggleFilter('AtRisk')">
+        <span style="width:6px;height:6px;border-radius:50%;background:#d97706;display:inline-block;"></span> At Risk
+    </button>
+    <button class="filter-chip" id="chip-Completed"
+            style="background:#052e1622;color:#4ade80;border-color:#16a34a;"
+            onclick="toggleFilter('Completed')">
+        <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block;"></span> Completed
+    </button>
+
+    <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="search-input" type="text" placeholder="Search goals or people…" oninput="onSearch(this.value)" />
+        <button id="search-clear" onclick="clearSearch()">✕</button>
     </div>
 </div>
 
@@ -594,10 +649,72 @@ function applyDiff({ users, links, sharedGoals }) {
                 description: sg.description, notes: sg.notes, memberIds: sg.memberIds });
         }
     });
+    applyVisibility();
 }
 
 setInterval(pollWhiteboard, 10000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pollWhiteboard(); });
+
+// ── Status filters ────────────────────────────────────────────────────────────
+const activeFilters = new Set(['NotStarted', 'InProgress', 'AtRisk', 'Completed']);
+
+function toggleFilter(status) {
+    if (activeFilters.has(status)) activeFilters.delete(status);
+    else activeFilters.add(status);
+    document.getElementById(`chip-${status}`).classList.toggle('off', !activeFilters.has(status));
+    applyVisibility();
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+let searchTerm = '';
+
+function onSearch(val) {
+    searchTerm = val.toLowerCase().trim();
+    document.getElementById('search-clear').classList.toggle('visible', searchTerm.length > 0);
+    applyVisibility();
+}
+
+function clearSearch() {
+    document.getElementById('search-input').value = '';
+    onSearch('');
+}
+
+// ── Combined visibility pass ──────────────────────────────────────────────────
+function applyVisibility() {
+    cy.batch(() => {
+        cy.nodes('[type="goal"]').forEach(n => {
+            const statusOk  = activeFilters.has(n.data('status'));
+            const searchOk  = !searchTerm ||
+                n.data('label').toLowerCase().includes(searchTerm) ||
+                n.data('userName').toLowerCase().includes(searchTerm);
+
+            if (!statusOk) {
+                n.style({ opacity: 0.07, 'border-width': 1.5 });
+            } else if (searchTerm && !searchOk) {
+                n.style({ opacity: 0.1, 'border-width': 1.5 });
+            } else if (searchTerm && searchOk) {
+                n.style({ opacity: 1, 'border-color': '#4ade80', 'border-width': 3 });
+            } else {
+                n.style({ opacity: 1, 'border-color': n.data('border'), 'border-width': 1.5 });
+            }
+        });
+
+        // Shared goal nodes: dim if search active and no match
+        cy.nodes('[type="shared"]').forEach(n => {
+            const searchOk = !searchTerm || n.data('label').toLowerCase().includes(searchTerm);
+            n.style({ opacity: searchTerm && !searchOk ? 0.1 : 1 });
+        });
+
+        // Edges follow their endpoints
+        cy.edges('[type="link"]').forEach(e => {
+            const bothVisible = e.source().style('opacity') > 0.5 && e.target().style('opacity') > 0.5;
+            e.style({ opacity: bothVisible ? 0.75 : 0.05 });
+        });
+        cy.edges('[type="shared-link"]').forEach(e => {
+            e.style({ opacity: e.target().style('opacity') > 0.5 ? 0.5 : 0.05 });
+        });
+    });
+}
 </script>
 </body>
 </html>
